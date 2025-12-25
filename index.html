@@ -4,52 +4,357 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>InsightHub - Knowledge Repository</title>
+  <title>InsightHub - Personal Knowledge Repository</title>
   
+  <!-- CDNs for essential libraries -->
   <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
-  <!-- Babel Standalone for browser-side TSX transpilation -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/marked@15.0.0/marked.min.js"></script>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   
   <style>
-    body { font-family: 'Inter', sans-serif; background-color: #fcfcfc; }
-    .mono { font-family: 'IBM+Plex+Mono', monospace; }
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: #f1f1f1; }
-    ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+    body { 
+      font-family: 'Inter', sans-serif; 
+      background-color: #fcfcfc; 
+      color: #0f172a;
+    }
+    .mono { font-family: 'IBM Plex Mono', monospace; }
     
-    .animate-fade-in { animation: fadeIn 0.5s ease-out; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    /* Smooth Transitions */
+    .fade-enter { opacity: 0; transform: translateY(10px); }
+    .fade-enter-active { opacity: 1; transform: translateY(0); transition: all 400ms ease-out; }
     
-    .prose pre { background-color: #0f172a !important; color: #f1f5f9 !important; border-radius: 1rem !important; }
-    .prose code { color: #2563eb !important; background-color: #eff6ff !important; padding: 0.2em 0.4em !important; border-radius: 0.375rem !important; font-weight: 500 !important; }
+    /* Custom UI Elements */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+    
+    .prose code {
+      color: #2563eb !important;
+      background-color: #eff6ff !important;
+      padding: 0.2em 0.4em !important;
+      border-radius: 0.375rem !important;
+      font-weight: 500 !important;
+    }
     .prose code::before, .prose code::after { content: "" !important; }
+    
+    /* Animation */
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-slide-up { animation: slideUp 0.5s ease-out forwards; }
   </style>
-
-  <script type="importmap">
+<script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@19.0.0",
-    "react-dom": "https://esm.sh/react-dom@19.0.0",
-    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
-    "marked": "https://esm.sh/marked@15.0.0",
-    "@google/genai": "https://esm.sh/@google/genai@1.34.0",
+    "react": "https://esm.sh/react@^19.2.3",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/"
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+    "marked": "https://esm.sh/marked@^17.0.1"
   }
 }
 </script>
 </head>
-<body class="text-slate-900 selection:bg-blue-100 antialiased">
+<body class="antialiased selection:bg-blue-100">
   <div id="root"></div>
 
-  <!-- We use type="text/babel" with data-presets to ensure Babel transpiles all imported files correctly -->
-  <script type="text/babel" data-type="module" data-presets="react,typescript">
-    import './index.tsx';
+  <script type="text/babel">
+    const { useState, useMemo, useEffect, useRef } = React;
+
+    // --- CONSTANTS & INITIAL DATA ---
+    const STORAGE_KEY = 'insighthub_knowledge_store';
+    const CONFIG_KEY = 'insighthub_gh_config';
+
+    const INITIAL_KNOWLEDGE = [
+      {
+        title: "Salesforce",
+        description: "CRM architecture and development.",
+        subCategories: [
+          {
+            title: "Development",
+            links: [
+              { 
+                id: "sfdc-1", 
+                title: "Apex Fundamentals", 
+                description: "Core programming concepts in Apex.",
+                content: "# Apex Fundamentals\n\nApex is a strongly typed, object-oriented programming language that allows developers to execute flow and transaction control statements on the Salesforce platform."
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const ICONS = {
+      Search: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>,
+      Plus: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>,
+      Settings: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 0 1 0 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 0 1 0-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>,
+      ArrowLeft: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" /></svg>
+    };
+
+    // --- COMPONENTS ---
+
+    const Header = ({ searchTerm, onSearchChange, onOpenSettings, onOpenCreator, isOwner, sortBy, onSortChange }) => (
+      <header className="sticky top-0 z-30 glass-card border-b border-slate-200 px-6 py-6 mb-12">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-black tracking-tighter text-slate-900">InsightHub</h1>
+              <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${isOwner ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
+                {isOwner ? 'Owner Mode' : 'Guest Access'}
+              </span>
+            </div>
+            <p className="text-sm text-slate-500 font-medium">Knowledge Management Repository</p>
+          </div>
+
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="relative flex-1 md:w-72">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><ICONS.Search /></div>
+              <input 
+                type="text" 
+                placeholder="Search repository..." 
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-sm font-medium"
+                value={searchTerm}
+                onChange={e => onSearchChange(e.target.value)}
+              />
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {isOwner && (
+                <button onClick={onOpenCreator} className="p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-95">
+                  <ICONS.Plus />
+                </button>
+              )}
+              <button onClick={onOpenSettings} className="p-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all active:scale-95">
+                <ICONS.Settings />
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+    );
+
+    const Section = ({ category, highlight, onLinkClick }) => {
+      const match = (text) => {
+        if (!highlight) return text;
+        const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+        return parts.map((p, i) => p.toLowerCase() === highlight.toLowerCase() ? <mark key={i} className="bg-yellow-200 text-yellow-900 rounded-sm px-0.5">{p}</mark> : p);
+      };
+
+      return (
+        <section className="mb-16 animate-slide-up">
+          <div className="flex items-baseline gap-4 mb-8 border-b border-slate-100 pb-3">
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">{match(category.title)}</h2>
+            {category.description && <span className="text-slate-400 text-sm italic font-light">{category.description}</span>}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {category.subCategories.map((sub, idx) => (
+              <div key={idx} className="group">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4 pb-1 border-b border-slate-50 transition-colors group-hover:text-blue-500">
+                  {match(sub.title)}
+                </h3>
+                <ul className="space-y-3">
+                  {sub.links.map(link => (
+                    <li key={link.id}>
+                      <button 
+                        onClick={() => onLinkClick(link)}
+                        className="w-full text-left group/item"
+                      >
+                        <div className="flex items-center gap-2 text-sm font-bold text-slate-700 group-hover/item:text-blue-600 transition-colors">
+                          <div className="w-1 h-1 bg-slate-300 rounded-full group-hover/item:bg-blue-500" />
+                          {match(link.title)}
+                        </div>
+                        {link.description && <p className="text-[11px] text-slate-400 ml-3 italic mt-0.5 line-clamp-1">{link.description}</p>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+      );
+    };
+
+    const ContentView = ({ item, onBack, onEdit, isOwner }) => {
+      if (!item) return null;
+      return (
+        <div className="max-w-4xl mx-auto px-6 py-12 animate-slide-up">
+          <div className="flex justify-between items-center mb-12">
+            <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-blue-600 font-bold text-xs uppercase tracking-widest transition-all">
+              <ICONS.ArrowLeft /> Back to Index
+            </button>
+            {isOwner && (
+              <button onClick={() => onEdit(item)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all">
+                Edit Content
+              </button>
+            )}
+          </div>
+          <h1 className="text-5xl font-black text-slate-900 mb-4 tracking-tight leading-none">{item.title}</h1>
+          <p className="text-xl text-slate-400 font-light italic mb-12 border-l-4 border-blue-50 pl-6">{item.description}</p>
+          <article 
+            className="prose prose-slate prose-lg max-w-none"
+            dangerouslySetInnerHTML={{ __html: marked.parse(item.content || "_No content_") }}
+          />
+        </div>
+      );
+    };
+
+    const EntryCreator = ({ onBack, onSave, categories, editItem }) => {
+      const [form, setForm] = useState({
+        category: '', subCategory: '', title: editItem?.title || '', 
+        description: editItem?.description || '', content: editItem?.content || ''
+      });
+
+      const handlePublish = () => {
+        if (!form.category || !form.subCategory || !form.title) return alert("Required fields missing");
+        onSave(form);
+      };
+
+      return (
+        <div className="max-w-5xl mx-auto px-6 py-12 animate-slide-up">
+          <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-red-500 font-black text-xs uppercase mb-10"><ICONS.ArrowLeft /> Discard</button>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <input placeholder="Category" className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold" value={form.category} onChange={e => setForm({...form, category: e.target.value})} />
+                <input placeholder="Sub-Category" className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold" value={form.subCategory} onChange={e => setForm({...form, subCategory: e.target.value})} />
+              </div>
+              <input placeholder="Subject Title" className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-xl font-black" value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
+              <textarea placeholder="Markdown content..." rows={15} className="w-full p-5 bg-white border border-slate-200 rounded-2xl font-mono text-sm leading-relaxed" value={form.content} onChange={e => setForm({...form, content: e.target.value})} />
+              <button onClick={handlePublish} className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-500/20 active:scale-95 transition-all">
+                Publish Entry
+              </button>
+            </div>
+            <div className="bg-slate-50 p-8 rounded-[2rem] border border-slate-200 overflow-y-auto max-h-[700px]">
+              <div className="text-[10px] font-black uppercase text-slate-400 mb-6 flex items-center gap-2"><div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"/> Live Preview</div>
+              <article className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: marked.parse(form.content || "# Preview Title") }} />
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const GitHubSettings = ({ onBack, onSave, config }) => {
+      const [local, setLocal] = useState(config);
+      return (
+        <div className="max-w-xl mx-auto px-6 py-24 text-center animate-slide-up">
+          <h2 className="text-4xl font-black text-slate-900 mb-2">Security & Identity</h2>
+          <p className="text-slate-400 mb-12">Configure your GitHub write access credentials.</p>
+          <div className="bg-white p-10 rounded-[2.5rem] border border-slate-200 shadow-2xl space-y-6">
+            <input placeholder="GitHub Username" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm" value={local.owner} onChange={e => setLocal({...local, owner: e.target.value})} />
+            <input placeholder="Repository Name" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm" value={local.repo} onChange={e => setLocal({...local, repo: e.target.value})} />
+            <input type="password" placeholder="Personal Access Token" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-mono" value={local.token} onChange={e => setLocal({...local, token: e.target.value})} />
+            <button onClick={() => { localStorage.setItem(CONFIG_KEY, JSON.stringify(local)); onSave(local); onBack(); }} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-black transition-all active:scale-95">Save Credentials</button>
+            <button onClick={onBack} className="w-full py-4 text-slate-400 font-bold text-xs uppercase">Cancel</button>
+          </div>
+        </div>
+      );
+    };
+
+    // --- MAIN APP ---
+
+    const App = () => {
+      const [view, setView] = useState('home');
+      const [knowledge, setKnowledge] = useState([]);
+      const [config, setConfig] = useState({ owner: '', repo: '', token: '', branch: 'main' });
+      const [searchTerm, setSearchTerm] = useState('');
+      const [activeItem, setActiveItem] = useState(null);
+
+      useEffect(() => {
+        const k = localStorage.getItem(STORAGE_KEY);
+        setKnowledge(k ? JSON.parse(k) : INITIAL_KNOWLEDGE);
+        const c = localStorage.getItem(CONFIG_KEY);
+        if (c) setConfig(JSON.parse(c));
+      }, []);
+
+      const processedKnowledge = useMemo(() => {
+        if (!searchTerm) return knowledge;
+        const lower = searchTerm.toLowerCase();
+        return JSON.parse(JSON.stringify(knowledge)).filter(cat => {
+          const matchCat = cat.title.toLowerCase().includes(lower);
+          const matchSub = cat.subCategories.some(sub => 
+            sub.title.toLowerCase().includes(lower) || 
+            sub.links.some(l => l.title.toLowerCase().includes(lower))
+          );
+          return matchCat || matchSub;
+        });
+      }, [searchTerm, knowledge]);
+
+      const isOwner = !!config.token;
+
+      const handleSaveEntry = (formData) => {
+        const updated = JSON.parse(JSON.stringify(knowledge));
+        let cat = updated.find(c => c.title.toLowerCase() === formData.category.toLowerCase());
+        if (!cat) {
+          cat = { title: formData.category, subCategories: [] };
+          updated.push(cat);
+        }
+        let sub = cat.subCategories.find(s => s.title.toLowerCase() === formData.subCategory.toLowerCase());
+        if (!sub) {
+          sub = { title: formData.subCategory, links: [] };
+          cat.subCategories.push(sub);
+        }
+        sub.links.push({
+          id: `item-${Date.now()}`,
+          title: formData.title,
+          description: formData.description,
+          content: formData.content
+        });
+        setKnowledge(updated);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        setView('home');
+      };
+
+      return (
+        <div className="min-h-screen pb-32">
+          {view === 'home' && (
+            <>
+              <Header 
+                searchTerm={searchTerm} 
+                onSearchChange={setSearchTerm} 
+                onOpenCreator={() => setView('creator')} 
+                onOpenSettings={() => setView('settings')}
+                isOwner={isOwner}
+              />
+              <main className="max-w-6xl mx-auto px-6">
+                {processedKnowledge.length > 0 ? (
+                  processedKnowledge.map((cat, i) => (
+                    <Section key={i} category={cat} highlight={searchTerm} onLinkClick={item => { setActiveItem(item); setView('detail'); }} />
+                  ))
+                ) : (
+                  <div className="py-32 text-center text-slate-300">
+                    <p className="text-xl font-bold">No results found.</p>
+                  </div>
+                )}
+              </main>
+            </>
+          )}
+
+          {view === 'detail' && <ContentView item={activeItem} isOwner={isOwner} onBack={() => setView('home')} onEdit={() => setView('editor')} />}
+          
+          {view === 'creator' && <EntryCreator onBack={() => setView('home')} onSave={handleSaveEntry} categories={knowledge} />}
+          
+          {view === 'settings' && <GitHubSettings onBack={() => setView('home')} config={config} onSave={setConfig} />}
+
+          <footer className="fixed bottom-0 left-0 w-full py-6 bg-white/80 backdrop-blur-md border-t border-slate-100 flex justify-center text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 z-20">
+            InsightHub Repository &bull; {new Date().getFullYear()} &bull; Stable Build
+          </footer>
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
   </script>
 </body>
 </html>
