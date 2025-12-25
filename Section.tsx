@@ -64,3 +64,4 @@ const Section: React.FC<SectionProps> = ({ category, highlight, onLinkClick }) =
 };
 
 export default Section;
+
