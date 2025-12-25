@@ -1,5 +1,5 @@
 
-import { GitHubConfig, MainCategory } from './types';
+import { GitHubConfig, MainCategory } from './types.ts';
 
 export const pushToGitHub = async (
   config: GitHubConfig, 
@@ -18,7 +18,7 @@ export const pushToGitHub = async (
     const fileData = await getRes.json();
     const sha = fileData.sha;
 
-    const newContent = `import { MainCategory } from './types';
+    const newContent = `import { MainCategory } from './types.ts';
 
 export const STORAGE_KEY = 'insighthub_custom_knowledge';
 
