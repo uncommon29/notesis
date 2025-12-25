@@ -1,12 +1,12 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import Header from './Header';
-import Section from './Section';
-import ContentView from './ContentView';
-import EntryCreator from './EntryCreator';
-import GitHubSettings from './GitHubSettings';
-import { KNOWLEDGE_BASE, ICONS, STORAGE_KEY } from './constants';
-import { AppView, LinkItem, MainCategory, GitHubConfig, SortOption } from './types';
+import Header from './Header.tsx';
+import Section from './Section.tsx';
+import ContentView from './ContentView.tsx';
+import EntryCreator from './EntryCreator.tsx';
+import GitHubSettings from './GitHubSettings.tsx';
+import { KNOWLEDGE_BASE, ICONS, STORAGE_KEY } from './constants.tsx';
+import { AppView, LinkItem, MainCategory, GitHubConfig, SortOption } from './types.ts';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>('home');
