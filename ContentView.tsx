@@ -118,3 +118,4 @@ const ContentView: React.FC<ContentViewProps> = ({ item, onBack, onEdit, onDelet
 };
 
 export default ContentView;
+
