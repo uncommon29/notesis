@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,7 +11,7 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://unpkg.com/marked@15.0.0/marked.min.js"></script>
   
-  <!-- LOADING EXTERNAL DATA -->
+  <!-- EXTERNAL DATA SOURCE -->
   <script src="data.js"></script>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,11 +19,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
   
   <style>
-    body { font-family: 'Inter', sans-serif; background-color: #fcfcfc; color: #0f172a; }
+    body { font-family: 'Inter', sans-serif; background-color: #fcfcfc; color: #0f172a; overflow-x: hidden; }
     .glass-card { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(226, 232, 240, 0.8); }
     .prose code { color: #2563eb !important; background-color: #eff6ff !important; padding: 0.2em 0.4em !important; border-radius: 0.375rem !important; }
     @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    .animate-slide-up { animation: slideUp 0.5s ease-out forwards; }
+    .animate-slide-up { animation: slideUp 0.4s ease-out forwards; }
   </style>
 <script type="importmap">
 {
@@ -47,34 +46,42 @@
     const STORAGE_KEY = 'insighthub_knowledge_store';
     const CONFIG_KEY = 'insighthub_gh_config';
 
-    // Helper to render HTML from external strings
+    // Safety check for global properties
+    const getIcon = (name) => {
+      if (window.ICONS && window.ICONS[name]) return window.ICONS[name];
+      return ''; // Return empty string if not found
+    };
+
     const Icon = ({ name, className = "" }) => (
-      <span className={className} dangerouslySetInnerHTML={{ __html: window.ICONS[name] }} />
+      <span className={className} dangerouslySetInnerHTML={{ __html: getIcon(name) }} />
     );
 
-    // --- COMPONENTS ---
+    // --- SUB-COMPONENTS ---
 
     const Header = ({ searchTerm, onSearchChange, onOpenSettings, onOpenCreator, isOwner }) => (
       <header className="sticky top-0 z-30 glass-card px-6 py-6 mb-12">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex flex-col">
-            <h1 className="text-3xl font-black tracking-tighter text-slate-900">InsightHub</h1>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-              {isOwner ? '⚡ Owner Authenticated' : '👤 Guest Viewing Mode'}
-            </p>
+            <h1 className="text-3xl font-black tracking-tighter text-slate-900 leading-none">InsightHub</h1>
+            <div className="mt-1 flex items-center gap-2">
+              <span className={`w-1.5 h-1.5 rounded-full ${isOwner ? 'bg-blue-500 animate-pulse' : 'bg-slate-300'}`}></span>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                {isOwner ? 'Authenticated Owner' : 'Guest Mode'}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-3 w-full md:w-auto">
             <div className="relative flex-1 md:w-72">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Icon name="Search" /></span>
               <input 
                 type="text" placeholder="Search knowledge base..." 
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none text-sm font-medium focus:ring-2 focus:ring-blue-500/10 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none text-sm font-medium focus:ring-4 focus:ring-blue-500/5 transition-all"
                 value={searchTerm} onChange={e => onSearchChange(e.target.value)}
               />
             </div>
             <div className="flex items-center gap-2">
-              {isOwner && <button onClick={onOpenCreator} className="p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-lg"><Icon name="Plus" /></button>}
-              <button onClick={onOpenSettings} className="p-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200"><Icon name="Settings" /></button>
+              {isOwner && <button onClick={onOpenCreator} className="p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 active:scale-95 transition-all"><Icon name="Plus" /></button>}
+              <button onClick={onOpenSettings} className="p-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 active:scale-95 transition-all"><Icon name="Settings" /></button>
             </div>
           </div>
         </div>
@@ -92,14 +99,14 @@
           <h2 className="text-2xl font-black text-slate-900 border-b border-slate-100 pb-2 mb-8">{match(category.title)}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {category.subCategories.map((sub, idx) => (
-              <div key={idx}>
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4">{match(sub.title)}</h3>
+              <div key={idx} className="group">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4 group-hover:text-blue-500 transition-colors">{match(sub.title)}</h3>
                 <ul className="space-y-3">
                   {sub.links.map(link => (
                     <li key={link.id}>
-                      <button onClick={() => onLinkClick(link)} className="w-full text-left group">
-                        <div className="flex items-center gap-2 text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">
-                          <div className="w-1.5 h-1.5 bg-slate-200 rounded-full group-hover:bg-blue-500" />
+                      <button onClick={() => onLinkClick(link)} className="w-full text-left group/item">
+                        <div className="flex items-center gap-2 text-sm font-bold text-slate-700 group-hover/item:text-blue-600 transition-colors">
+                          <div className="w-1.5 h-1.5 bg-slate-200 rounded-full group-hover/item:bg-blue-500 transition-all" />
                           {match(link.title)}
                         </div>
                         {link.description && <p className="text-[11px] text-slate-400 ml-3.5 mt-0.5 italic line-clamp-1">{link.description}</p>}
@@ -124,7 +131,7 @@
             </button>
             {isOwner && (
               <div className="flex items-center gap-4">
-                <button onClick={() => onEdit(item)} className="px-5 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Edit</button>
+                <button onClick={() => onEdit(item)} className="px-5 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all flex items-center gap-2"><Icon name="Edit" /> Edit</button>
                 <button onClick={() => { if(confirm("Permanently delete this entry?")) onDelete(item.id); }} className="px-5 py-2.5 bg-red-50 text-red-500 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-red-100 flex items-center gap-2 transition-all">
                   <Icon name="Trash" /> Delete
                 </button>
@@ -132,14 +139,15 @@
             )}
           </div>
           <h1 className="text-5xl font-black text-slate-900 mb-4 tracking-tight leading-none">{item.title}</h1>
-          <p className="text-xl text-slate-400 font-light italic mb-12 border-l-4 border-blue-50 pl-6">{item.description}</p>
-          <article className="prose prose-slate prose-lg max-w-none" dangerouslySetInnerHTML={{ __html: marked.parse(item.content || "") }} />
+          <p className="text-xl text-slate-400 font-light italic mb-12 border-l-4 border-blue-100 pl-6">{item.description}</p>
+          <article className="prose prose-slate prose-lg max-w-none prose-img:rounded-3xl" dangerouslySetInnerHTML={{ __html: marked.parse(item.content || "") }} />
         </div>
       );
     };
 
     const EntryCreator = ({ onBack, onSave, editItem, knowledge }) => {
-      const findParentInfo = () => {
+      // Find parent info for breadcrumbs/category selection
+      const getParentInfo = () => {
         if (!editItem) return { cat: '', sub: '' };
         for (const c of knowledge) {
           for (const s of c.subCategories) {
@@ -149,53 +157,61 @@
         return { cat: '', sub: '' };
       };
 
-      const parents = findParentInfo();
+      const parents = getParentInfo();
       const [form, setForm] = useState({
         category: parents.cat, subCategory: parents.sub, 
         title: editItem?.title || '', description: editItem?.description || '', 
         content: editItem?.content || ''
       });
 
+      const handleSave = () => {
+        if (!form.category || !form.subCategory || !form.title) {
+          alert("Category, Sub-Category, and Title are required.");
+          return;
+        }
+        onSave(form, editItem?.id);
+      };
+
       return (
         <div className="max-w-6xl mx-auto px-6 py-12 animate-slide-up">
           <div className="flex justify-between items-center mb-12">
-            <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-red-500 font-black text-xs uppercase"><Icon name="ArrowLeft" /> Discard Changes</button>
-            <h2 className="text-xl font-black text-slate-900">{editItem ? 'Edit Entry' : 'Create New Knowledge'}</h2>
+            <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-red-500 font-black text-xs uppercase transition-all"><Icon name="ArrowLeft" /> Cancel</button>
+            <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">{editItem ? 'Edit entry' : 'New entry'}</h2>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
-                <input placeholder="Major Category" className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500/10" value={form.category} onChange={e => setForm({...form, category: e.target.value})} />
-                <input placeholder="Sub-Section" className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500/10" value={form.subCategory} onChange={e => setForm({...form, subCategory: e.target.value})} />
+                <input placeholder="Main Category" className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/5 transition-all" value={form.category} onChange={e => setForm({...form, category: e.target.value})} />
+                <input placeholder="Sub-Section" className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/5 transition-all" value={form.subCategory} onChange={e => setForm({...form, subCategory: e.target.value})} />
               </div>
-              <input placeholder="Entry Title" className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-xl font-black outline-none focus:ring-2 focus:ring-blue-500/10" value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
-              <textarea placeholder="Write in Markdown..." rows={15} className="w-full p-6 bg-white border border-slate-200 rounded-2xl font-mono text-sm leading-relaxed outline-none focus:ring-2 focus:ring-blue-500/10" value={form.content} onChange={e => setForm({...form, content: e.target.value})} />
-              <button onClick={() => onSave(form, editItem?.id)} className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-500/20 active:scale-[0.98] transition-all">
-                {editItem ? 'Save Updates' : 'Publish to Repository'}
+              <input placeholder="Entry Title" className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-xl font-black outline-none focus:ring-4 focus:ring-blue-500/5 transition-all" value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
+              <textarea placeholder="Markdown content..." rows={15} className="w-full p-6 bg-white border border-slate-200 rounded-2xl font-mono text-sm leading-relaxed outline-none focus:ring-4 focus:ring-blue-500/5 transition-all" value={form.content} onChange={e => setForm({...form, content: e.target.value})} />
+              <button onClick={handleSave} className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-500/20 active:scale-[0.98] transition-all">
+                {editItem ? 'Save Updates' : 'Publish Entry'}
               </button>
             </div>
-            <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm overflow-y-auto max-h-[750px] sticky top-32">
-              <div className="text-[10px] font-black uppercase text-slate-300 mb-6 flex items-center gap-2">Rendered Preview</div>
-              <article className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: marked.parse(form.content || "# Your Title\n\nBegin writing to see the preview...") }} />
+            <div className="bg-slate-50 p-8 rounded-[2rem] border border-slate-100 overflow-y-auto max-h-[800px] sticky top-32">
+              <div className="text-[10px] font-black uppercase text-slate-300 mb-6 flex items-center gap-2 tracking-[0.2em] border-b border-slate-200 pb-2">Live Rendering</div>
+              <article className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: marked.parse(form.content || "# Preview Title\n\nStart typing to see the magic...") }} />
             </div>
           </div>
         </div>
       );
     };
 
-    // --- MAIN APPLICATION LOGIC ---
+    // --- MAIN APPLICATION ---
 
     const App = () => {
       const [view, setView] = useState('home');
       const [knowledge, setKnowledge] = useState([]);
-      const [config, setConfig] = useState({ token: '', owner: '', repo: '' });
+      const [config, setConfig] = useState({ token: '' });
       const [searchTerm, setSearchTerm] = useState('');
       const [activeItem, setActiveItem] = useState(null);
 
-      // Initialization
+      // Load initial state
       useEffect(() => {
         const localData = localStorage.getItem(STORAGE_KEY);
-        setKnowledge(localData ? JSON.parse(localData) : window.INITIAL_KNOWLEDGE);
+        setKnowledge(localData ? JSON.parse(localData) : (window.INITIAL_KNOWLEDGE || []));
         
         const localConfig = localStorage.getItem(CONFIG_KEY);
         if (localConfig) setConfig(JSON.parse(localConfig));
@@ -214,21 +230,33 @@
 
       const isOwner = !!config.token;
 
-      // Global Save Handler
+      // Logic: Save (Create/Update)
       const handleSave = (form, existingId) => {
         const updated = JSON.parse(JSON.stringify(knowledge));
         
-        // Remove existing to replace (for clean updates)
-        updated.forEach(c => c.subCategories.forEach(s => s.links = s.links.filter(l => l.id !== existingId)));
+        // Remove old entry if updating to avoid duplication
+        if (existingId) {
+          updated.forEach(c => {
+            c.subCategories.forEach(s => {
+              s.links = s.links.filter(l => l.id !== existingId);
+            });
+          });
+        }
         
         let cat = updated.find(c => c.title.toLowerCase() === form.category.toLowerCase());
         if (!cat) { cat = { title: form.category, subCategories: [] }; updated.push(cat); }
         let sub = cat.subCategories.find(s => s.title.toLowerCase() === form.subCategory.toLowerCase());
         if (!sub) { sub = { title: form.subCategory, links: [] }; cat.subCategories.push(sub); }
         
-        const item = { id: existingId || `item-${Date.now()}`, title: form.title, description: form.description, content: form.content };
-        sub.links.push(item);
+        const newItem = { 
+          id: existingId || `item-${Date.now()}`, 
+          title: form.title, 
+          description: form.description, 
+          content: form.content 
+        };
+        sub.links.push(newItem);
         
+        // Cleanup empty containers
         const final = updated.filter(c => {
           c.subCategories = c.subCategories.filter(s => s.links.length > 0);
           return c.subCategories.length > 0;
@@ -236,11 +264,11 @@
 
         setKnowledge(final);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(final));
-        setActiveItem(item);
-        setView('home');
+        setActiveItem(newItem);
+        setView('home'); // Return to list or you could go back to the detail view
       };
 
-      // Global Delete Handler
+      // Logic: Delete
       const handleDelete = (id) => {
         const updated = JSON.parse(JSON.stringify(knowledge)).filter(c => {
           c.subCategories = c.subCategories.filter(s => {
@@ -260,7 +288,13 @@
             <>
               <Header searchTerm={searchTerm} onSearchChange={setSearchTerm} onOpenCreator={() => { setActiveItem(null); setView('creator'); }} onOpenSettings={() => setView('settings')} isOwner={isOwner} />
               <main className="max-w-6xl mx-auto px-6">
-                {filteredKnowledge.map((cat, i) => <Section key={i} category={cat} highlight={searchTerm} onLinkClick={item => { setActiveItem(item); setView('detail'); }} />)}
+                {filteredKnowledge.length > 0 ? (
+                  filteredKnowledge.map((cat, i) => <Section key={i} category={cat} highlight={searchTerm} onLinkClick={item => { setActiveItem(item); setView('detail'); }} />)
+                ) : (
+                  <div className="py-40 text-center text-slate-300">
+                    <p className="text-lg font-black uppercase tracking-[0.3em]">No matching entries found</p>
+                  </div>
+                )}
               </main>
             </>
           )}
@@ -270,7 +304,7 @@
               item={activeItem} 
               isOwner={isOwner} 
               onBack={() => setView('home')} 
-              onEdit={() => setView('creator')} 
+              onEdit={(item) => { setActiveItem(item); setView('creator'); }} 
               onDelete={handleDelete} 
             />
           )}
@@ -287,29 +321,35 @@
           {view === 'settings' && (
             <div className="max-w-xl mx-auto px-6 py-24 animate-slide-up">
               <div className="text-center mb-12">
-                <h2 className="text-4xl font-black text-slate-900 mb-2">Settings</h2>
-                <p className="text-slate-400">Manage your credentials and sync options.</p>
+                <h2 className="text-4xl font-black text-slate-900 mb-2">Owner Identity</h2>
+                <p className="text-slate-400 font-medium">Authentication token required for write operations.</p>
               </div>
-              <div className="bg-white p-10 rounded-[2.5rem] border border-slate-200 shadow-2xl space-y-6">
+              <div className="bg-white p-10 rounded-[2.5rem] border border-slate-200 shadow-2xl space-y-8">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-slate-400 ml-1">GitHub Access Token</label>
-                  <input type="password" placeholder="ghp_xxxx..." className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-mono text-sm" value={config.token} onChange={e => setConfig({...config, token: e.target.value})} />
+                  <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Access Token</label>
+                  <input type="password" placeholder="ghp_xxxx..." className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-mono text-sm outline-none focus:ring-4 focus:ring-blue-500/5 transition-all" value={config.token} onChange={e => setConfig({...config, token: e.target.value})} />
+                  <p className="text-[9px] text-slate-400 italic px-1 leading-relaxed">Tokens are stored locally in your browser and never shared with 3rd parties. Log out to purge.</p>
                 </div>
-                <button onClick={() => { localStorage.setItem(CONFIG_KEY, JSON.stringify(config)); setView('home'); }} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-sm uppercase hover:bg-black transition-all">Save Config</button>
-                <button onClick={() => { localStorage.removeItem(CONFIG_KEY); setConfig({token:''}); setView('home'); }} className="w-full py-3 text-red-400 font-bold text-xs uppercase">Logout / Reset</button>
-                <button onClick={() => setView('home')} className="w-full py-2 text-slate-400 font-bold text-xs uppercase">Cancel</button>
+                <button onClick={() => { localStorage.setItem(CONFIG_KEY, JSON.stringify(config)); setView('home'); }} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-sm uppercase tracking-[0.2em] hover:bg-black transition-all shadow-xl active:scale-[0.98]">Save & Unlock</button>
+                <div className="flex flex-col gap-2 pt-4">
+                  <button onClick={() => { localStorage.removeItem(CONFIG_KEY); setConfig({token:''}); setView('home'); }} className="w-full py-2 text-red-400 font-black text-[10px] uppercase tracking-widest hover:text-red-500 transition-colors">Clear Identity (Logout)</button>
+                  <button onClick={() => setView('home')} className="w-full py-2 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-slate-600 transition-colors">Return to Home</button>
+                </div>
               </div>
             </div>
           )}
 
-          <footer className="fixed bottom-0 left-0 w-full py-6 bg-white/80 backdrop-blur-md border-t border-slate-100 text-center text-[9px] font-black uppercase tracking-[0.4em] text-slate-300">
-            InsightHub System &bull; Local Persistance Enabled
+          <footer className="fixed bottom-0 left-0 w-full py-6 bg-white/90 backdrop-blur-md border-t border-slate-100 text-center text-[9px] font-black uppercase tracking-[0.4em] text-slate-300 z-20">
+            InsightHub System &bull; Active Node &bull; {new Date().getFullYear()}
           </footer>
         </div>
       );
     };
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    const rootElement = document.getElementById('root');
+    if (rootElement) {
+      ReactDOM.createRoot(rootElement).render(<App />);
+    }
   </script>
 </body>
 </html>
